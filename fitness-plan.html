@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>My Muscle Blueprint</title>
+
+<!-- Firebase Compat -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script>
+  window.addEventListener('load', function() {
+    var cfg = {
+      apiKey: "AIzaSyASEscYEYz_aEN7fTGvYXaGcXtMqFT_4yk",
+      authDomain: "my-fitness-plan-f01df.firebaseapp.com",
+      projectId: "my-fitness-plan-f01df",
+      storageBucket: "my-fitness-plan-f01df.firebasestorage.app",
+      messagingSenderId: "895097610691",
+      appId: "1:895097610691:web:6f1adf8ec3f8a2ce119d76"
+    };
+    if (!firebase.apps.length) { firebase.initializeApp(cfg); }
+    window.db = firebase.firestore();
+    window.dbReady = true;
+    window.dispatchEvent(new Event('dbReady'));
+  });
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Bebas+Neue&display=swap" rel="stylesheet"/>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0a0a0f;color:#e2e8f0;font-family:'DM Sans','Segoe UI',sans-serif}
+  ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:#111}::-webkit-scrollbar-thumb{background:#333;border-radius:2px}
+  .btn{transition:all .15s ease;cursor:pointer;border:none;background:none}
+  .day-btn:hover{opacity:.85;transform:translateY(-1px)}
+  .tab-btn:hover{color:#fff}
+  .card{transition:all .15s ease}.card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.4)}
+  .ex-row:hover{background:rgba(255,255,255,.05)!important}
+  .sched-row:hover{background:rgba(255,255,255,.04)!important}
+  input,textarea{outline:none;font-family:'DM Sans',sans-serif}
+  input:focus,textarea:focus{border-color:rgba(249,115,22,.6)!important}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  .fi{animation:fadeIn .3s ease forwards}
+  .scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch}.scroll-x::-webkit-scrollbar{display:none}
+  .spinner{width:20px;height:20px;border:2px solid rgba(249,115,22,.3);border-top-color:#f97316;border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .check-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.06);margin-bottom:6px;cursor:pointer;transition:all .15s ease}
+  .check-item:hover{background:rgba(255,255,255,.04)}
+  .check-item.checked{background:rgba(34,197,94,.06);border-color:rgba(34,197,94,.2)}
+  .check-box{width:20px;height:20px;border-radius:6px;border:2px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s ease}
+  .check-box.checked{background:#22c55e;border-color:#22c55e}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback, useRef } = React;
+
+// ── PLAN DATA ────────────────────────────────────────────────────────────────
+
+const DAYS = [
+  {
+    id:"d1",label:"Day 1",name:"Chest + Triceps",day:"Monday",color:"#f97316",tag:"PUSH",
+    note:"Weighted dips and incline bench are your primary chest movements — hit them heavy when fully fresh. Stretch pushups are the finisher at the end for a deep pec burnout. 2–3 sets to failure. Rest 2–3 min on compounds, 90 sec on isolation.",
+    exercises:[
+      {id:"d1e1",name:"Weighted Dips",sets:3,target:"To failure",notes:"Primary chest compound — lean forward, full depth, load heavy"},
+      {id:"d1e2",name:"Incline Bench Press",sets:3,target:"To failure",notes:"Primary upper chest — go heavy, this is your main pressing movement"},
+      {id:"d1e3",name:"Pec Dec Flys",sets:2,target:"To failure",notes:"Short head peak contraction — squeeze hard at full contraction"},
+      {id:"d1e4",name:"Hex Bar Reverse Grip Bench",sets:2,target:"To failure",notes:"Tricep primary — elbows stay tight to body"},
+      {id:"d1e5",name:"Skull Crushers",sets:2,target:"To failure",notes:"Long head stretch — lower bar behind head slightly"},
+      {id:"d1e6",name:"JM Overhead Rope Extension",sets:2,target:"To failure",notes:"Best long head tricep exercise — full stretch at top"},
+      {id:"d1e7",name:"Dumbbell Stretch Pushups",sets:2,target:"To failure",notes:"Finisher — pec burnout, maximise stretch at bottom of each rep"},
+    ]
+  },
+  {
+    id:"d2",label:"Day 2",name:"Back + Traps + Rear Delts",day:"Tuesday",color:"#3b82f6",tag:"PULL",
+    note:"Initiate every pull with lats, not arms. Full ROM on every rep. 2–3 sets to failure. Rest 2–3 min on rows and pull-ups.",
+    exercises:[
+      {id:"d2e1",name:"Weighted Pull-Ups",sets:3,target:"To failure",notes:"Dead hang start — full lat stretch at bottom"},
+      {id:"d2e2",name:"T-Bar Row",sets:3,target:"To failure",notes:"Primary mid-back thickness builder"},
+      {id:"d2e3",name:"High to Low Cable Row",sets:2,target:"To failure",notes:"Hits lower lats at unique angle"},
+      {id:"d2e4",name:"Wide Grip Lat Pulldown",sets:2,target:"To failure",notes:"Same lat stimulus as BTN — zero injury risk"},
+      {id:"d2e5",name:"Straight Arm Cable Pulldown",sets:2,target:"To failure",notes:"Pure lat isolation — no bicep involvement"},
+      {id:"d2e6",name:"Reverse Pec Dec (One Hand)",sets:2,target:"To failure",notes:"Rear delt isolation — lead with elbow not hand"},
+      {id:"d2e7",name:"Face Pull",sets:2,target:"15–20 reps",notes:"Rotator cuff health — critical given pressing volume"},
+      {id:"d2e8",name:"Shrug Machine",sets:3,target:"To failure",notes:"Hold at top 1 sec each rep — traps respond to volume"},
+    ]
+  },
+  {
+    id:"d3",label:"Day 3",name:"Legs — Bilateral Heavy",day:"Thursday",color:"#8b5cf6",tag:"LEGS A",
+    note:"Bilateral compounds only — both legs loaded heavy simultaneously. Rest 3 min on belt squat and hack squat. RDL here instead of Day 5 so posterior chain gets hit fresh. No leg extension today — saved for Day 5 where it works harder.",
+    exercises:[
+      {id:"d3e1",name:"Belt Squat",sets:3,target:"To failure",notes:"Primary quad compound — no spinal load, go heavy"},
+      {id:"d3e2",name:"Hack Squat",sets:2,target:"To failure",notes:"Bilateral quad overload — feet shoulder-width, low placement"},
+      {id:"d3e3",name:"Romanian Deadlift",sets:3,target:"To failure",notes:"Hip hinge — feel hamstring stretch, don't round back"},
+      {id:"d3e4",name:"Prone Leg Curl",sets:2,target:"To failure",notes:"Full ROM — pause at full extension"},
+      {id:"d3e5",name:"Standing Calf Raise",sets:3,target:"To failure",notes:"Gastrocnemius — pause at stretch, full ROM"},
+      {id:"d3e6",name:"Seated Calf Raise",sets:3,target:"To failure",notes:"Soleus — both calf heads need direct work"},
+      {id:"d3e7",name:"Hanging Leg Raises",sets:2,target:"To failure",notes:"Keep legs straight — lower abs and hip flexors"},
+      {id:"d3e8",name:"Cable Crunch",sets:2,target:"To failure",notes:"Round the spine — don't just hinge at hips"},
+    ]
+  },
+  {
+    id:"d4",label:"Day 4",name:"Shoulders + Biceps + Forearms",day:"Friday",color:"#14b8a6",tag:"ARMS",
+    note:"Exactly 3 bicep movements. Week A: Incline Curl + Preacher. Week B: Waiter Curls + Cable Curls. Mentzer Curls every week. Cable rear delt fly added at end for extra rear delt frequency — you need it given pressing volume. Rest 90 sec throughout.",
+    exercises:[
+      {id:"d4e1",name:"Overhead Press",sets:3,target:"To failure",notes:"Primary shoulder compound — brace core hard"},
+      {id:"d4e2",name:"Bench Leaning 1-Arm Lateral Raise",sets:2,target:"To failure each arm",notes:"Best lateral raise variation — constant tension"},
+      {id:"d4e3",name:"Cable Lateral Raise",sets:2,target:"To failure",notes:"Cable keeps tension at bottom unlike dumbbells"},
+      {id:"d4e4",name:"Incline Bench Curl ★",sets:2,target:"To failure",notes:"Long head — rotate with Waiter Curls (Week B)"},
+      {id:"d4e5",name:"Machine Preacher Curl ★",sets:2,target:"To failure",notes:"Short head/peak — rotate with Cable Curls (Week B)"},
+      {id:"d4e6",name:"Mentzer Curls",sets:2,target:"To failure",notes:"Heavy HIT overload — slow negative every rep"},
+      {id:"d4e7",name:"Reverse Curls",sets:2,target:"To failure",notes:"Brachioradialis + forearm — pronated grip"},
+      {id:"d4e8",name:"Wrist Curls",sets:2,target:"15–20 reps",notes:"Forearm flexors — big aesthetic impact"},
+      {id:"d4e9",name:"Cable Rear Delt Fly",sets:2,target:"To failure",notes:"Extra rear delt frequency — cables keep constant tension unlike dumbbells"},
+    ]
+  },
+  {
+    id:"d5",label:"Day 5",name:"Legs — Unilateral + Posterior Chain",day:"Saturday",color:"#ec4899",tag:"LEGS B",
+    note:"All unilateral or isolation work — completely different stimulus from Day 3. Single leg press and Bulgarian split squat together make this a true unilateral day. Hip thrust is your primary glute builder. Leg extension works harder here since quads aren't pre-exhausted from heavy bilaterals.",
+    exercises:[
+      {id:"d5e1",name:"Seated Leg Curl",sets:3,target:"To failure",notes:"Lengthened position — superior hypertrophy to prone curl"},
+      {id:"d5e2",name:"Bulgarian Split Squat",sets:3,target:"To failure each leg",notes:"Unilateral — glute + quad, go deep, keep torso upright"},
+      {id:"d5e3",name:"Single Leg Press",sets:2,target:"To failure each leg",notes:"Unilateral quad — fresher here than buried in Day 3"},
+      {id:"d5e4",name:"Hip Thrust (Barbell)",sets:3,target:"To failure",notes:"Primary glute builder — squeeze hard at full extension"},
+      {id:"d5e5",name:"Leg Extension",sets:2,target:"To failure",notes:"Quad finisher — legs far fresher here than at end of Day 3"},
+      {id:"d5e6",name:"Seated Calf Raise",sets:3,target:"To failure",notes:"Extra soleus frequency — calves are stubborn"},
+      {id:"d5e7",name:"Ab Wheel Rollout",sets:2,target:"To failure",notes:"Core twice a week — brace hard, no lower back arch"},
+      {id:"d5e8",name:"Reverse Wrist Curls",sets:2,target:"15–20 reps",notes:"Forearm extensors — pair with Day 4 wrist curls"},
+    ]
+  },
+];
+
+const WEEKLY=[
+  {day:"Mon",session:"Chest + Tris",type:"push"},
+  {day:"Tue",session:"Back + Traps",type:"pull"},
+  {day:"Wed",session:"Rest",type:"rest"},
+  {day:"Thu",session:"Legs A",type:"legs"},
+  {day:"Fri",session:"Shoulders + Bis",type:"shoulders"},
+  {day:"Sat",session:"Legs B",type:"extra"},
+  {day:"Sun",session:"Rest",type:"rest"},
+];
+
+const MEALS=[
+  {
+    label:"Meal 1 — Breakfast",time:"7:00–7:30 AM",kcal:850,macros:{p:63,c:52,f:40},
+    tag:"Fresh daily",tagColor:"#f97316",
+    items:["6 whole eggs scrambled","1 protein bagel","2oz deli ham","1 slice cheese","½ cup kimchi","Building Blocks (3 capsules)"],
+    note:"Cook fresh daily. Kimchi supports gut health — important for your digestion sensitivity. Take Building Blocks here — fat from the eggs aids absorption.",
+    prep:"Scramble eggs with ham mixed in. Top bagel with cheese. Kimchi on the side."
+  },
+  {
+    label:"Meal 2 — Pre-Workout",time:"12:30–1:00 PM",kcal:720,macros:{p:35,c:95,f:22},
+    tag:"Meal prep — 1 scoop",tagColor:"#3b82f6",
+    items:["1/12 of cooked beef batch (1 scoop)","⅔ cup uncooked rice worth of cooked rice","1 cup mixed roasted vegetables","Handful raw spinach","1 digestive enzyme capsule before eating"],
+    note:"1 scoop of beef from your batch. Biggest carb meal — 90 min before training. Take digestive enzyme before eating. Chipotle bowl with double steak, rice and salsa works as a flexible swap here.",
+    prep:"Pull from fridge. Microwave 2–3 min with damp paper towel over top."
+  },
+  {
+    label:"Pre-Workout Shake",time:"2:00 PM",kcal:240,macros:{p:50,c:8,f:4},
+    tag:"Quick",tagColor:"#8b5cf6",
+    items:["2 scoops whey protein","8–10oz water","Optional: 1 tbsp peanut butter for extra calories"],
+    note:"30 min before training. Tops off amino acids right before the session.",
+    prep:"Shake and go."
+  },
+  {
+    label:"Meal 3 — Combined Post-Workout Dinner",time:"4:30–5:30 PM",kcal:1310,macros:{p:70,c:184,f:48},
+    tag:"Meal prep — 2 scoops",tagColor:"#ec4899",
+    items:["2/12 of cooked beef batch (2 scoops)","1 cup uncooked rice worth of cooked rice (~2.5 cups)","2 cups mixed roasted vegetables","Large handful raw spinach","5g creatine in water alongside","2 digestive enzyme capsules before eating","Fish oil capsules with this meal"],
+    note:"2 scoops of beef — exactly double your Meal 2 portion. Peak insulin sensitivity window. If the volume feels too much at once, split it: eat beef and half the rice at 4:30 PM then the rest at 6:30 PM. Same food, same macros.",
+    prep:"Pull from fridge. Microwave 2.5–3 min with damp paper towel over top. Take creatine, digestive enzymes and fish oil here."
+  },
+];
+
+const PREP_GUIDE = {
+  perCook:"2 lbs 85/15 ground beef + 0.5 lb ancestral blend = 2.5 lbs raw → ~28–30oz cooked",
+  ricePerCook:"7 cups uncooked jasmine rice per cook (fits most rice cookers in one batch)",
+  rhythm:[
+    {cook:"Cook Day 1 — Sunday",covers:"Monday / Tuesday / Wednesday / Thursday",containers:"8 containers total"},
+    {cook:"Cook Day 2 — Thursday",covers:"Friday / Saturday / Sunday / Monday",containers:"8 containers total"},
+  ],
+  portions:[
+    {label:"Meal 2 — Pre-Workout",scoops:"1 scoop",rice:"⅔ cup uncooked worth",veg:"1 cup",containers:"4 containers per cook"},
+    {label:"Meal 3 — Post-Workout Dinner",scoops:"2 scoops",rice:"1 cup uncooked worth",veg:"2 cups",containers:"4 containers per cook"},
+  ],
+  steps:[
+    {time:"0:00",task:"Start rice cooker",detail:"7 cups uncooked jasmine rice. Press cook and walk away — it handles itself."},
+    {time:"0:05",task:"Season raw beef",detail:"Mix into raw meat before cooking: 1 tbsp salt · 1 tsp black pepper · 1 tbsp garlic powder · 1 tbsp onion powder · 3 tbsp soy sauce or coconut aminos · optional 1 tsp smoked paprika. Mix thoroughly so every scoop is evenly seasoned."},
+    {time:"0:10",task:"Cook the beef",detail:"Large skillet, medium-high heat. No oil needed — fat renders out naturally. Break up constantly. Pull the moment it is just no longer pink — don't overcook or it dries out on reheat. Do NOT drain the fat. That is your calories and the ancestral blend fat carries fat-soluble vitamins."},
+    {time:"0:25",task:"Rest and divide the pan",detail:"Let beef rest 3–4 min off heat. Mentally divide the entire pan into 12 equal sections like a clock face. Use a spatula to roughly mark them out. Each section = 1 scoop."},
+    {time:"0:28",task:"Roast vegetables",detail:"Sheet pan at 425°F. Cauliflower, Brussels sprouts, bell peppers, onion, mushrooms — toss in olive oil, salt, garlic powder. 20–25 min until edges caramelise."},
+    {time:"0:35",task:"Rice done",detail:"Fluff and let cool slightly before portioning."},
+    {time:"0:40",task:"Portion into 8 containers",detail:"Assembly line — lay all 8 containers out. Meal 2 containers (×4): 1 scoop beef + ⅔ cup rice worth of cooked rice + 1 cup veg + handful raw spinach. Meal 3 containers (×4): 2 scoops beef + double the rice + 2 cups veg + large handful raw spinach. Raw spinach wilts perfectly when reheated."},
+    {time:"0:48",task:"Cool before sealing",detail:"Leave lids off for 5–10 min. Trapped steam = soggy food and shorter fridge life. Seal only when cooled."},
+    {time:"0:50",task:"All 8 containers straight to fridge",detail:"No freezing needed. Cooked ground beef lasts 4 days in the fridge — exactly how long until your next cook. Always fresh, never frozen."},
+  ],
+  reheat:"Microwave 2.5–3 min with a damp paper towel over the top. Stir halfway through. The paper towel keeps moisture in and stops the beef drying out.",
+  fridgeLife:"4 days max for cooked ground beef. Cook every 4 days on this schedule and everything stays fresh with no freezing needed.",
+};
+
+const GROCERY=[
+  {
+    category:"Proteins",color:"#f97316",
+    items:[
+      {name:"85/15 ground beef",qty:"2 lbs per cook / ~4 lbs per week",note:"Buy per cook or bulk weekly. Main protein source for meal prep."},
+      {name:"Ancestral blend ground beef",qty:"0.5 lb per cook / ~1 lb per week",note:"Organ meat blend — micronutrient dense. Mix with 85/15 when cooking."},
+      {name:"Deli ham — sliced",qty:"4–6 oz",note:"Breakfast addition — scramble into eggs"},
+      {name:"Cheddar or Swiss cheese — sliced",qty:"4–6 slices",note:"Breakfast addition"},
+      {name:"Eggs",qty:"3 dozen",note:"6 per day × 5–6 breakfast days = 30–36 eggs"},
+      {name:"Whey protein powder",qty:"Check supply",note:"2 scoops/day in pre-workout shake — ~14 scoops/week"},
+    ]
+  },
+  {
+    category:"Carbohydrates",color:"#8b5cf6",
+    items:[
+      {name:"Jasmine rice — large bag",qty:"7 cups per cook / ~14 cups per week",note:"Buy a 10–20 lb bag for convenience. Cook 7 cups every 4 days."},
+      {name:"Protein bagels (Thomas or similar)",qty:"1 pack (6)",note:"1 per day for breakfast"},
+    ]
+  },
+  {
+    category:"Vegetables",color:"#22c55e",
+    items:[
+      {name:"Cauliflower — 1 head",qty:"1 head per cook",note:"Roast on sheet pan with other veg"},
+      {name:"Brussels sprouts",qty:"1 lb bag per cook",note:"Roast on sheet pan"},
+      {name:"Bell peppers — mixed colors",qty:"2–3 peppers per cook",note:"Roast on sheet pan"},
+      {name:"White onion",qty:"1 large per cook",note:"Roast on sheet pan"},
+      {name:"Mushrooms",qty:"8 oz per cook",note:"Roast on sheet pan"},
+      {name:"Spinach — fresh",qty:"5 oz bag per cook",note:"Add raw to containers — wilts on reheat, no cooking needed"},
+      {name:"Kimchi",qty:"1 jar",note:"½ cup per day with breakfast — probiotic, keep this always stocked"},
+    ]
+  },
+  {
+    category:"Fats & Oils",color:"#eab308",
+    items:[
+      {name:"Olive oil or avocado oil",qty:"1 bottle",note:"For roasting vegetables and seasoning"},
+      {name:"Peanut butter",qty:"1 jar",note:"Optional calorie addition to pre-workout shake"},
+    ]
+  },
+  {
+    category:"Supplements",color:"#14b8a6",
+    items:[
+      {name:"Creatine monohydrate",qty:"Check supply",note:"5g/day post-workout with Meal 3 — ~35g/week"},
+      {name:"Magnesium glycinate",qty:"1 bottle",note:"300–400mg at 9:30 PM — NOT covered in Building Blocks"},
+      {name:"Digestive enzymes (NOW Super Enzymes or similar)",qty:"1 bottle",note:"2 capsules before Meal 2, 2 before Meal 3 — ~28/week"},
+      {name:"Fish oil (EPA/DHA)",qty:"Check supply",note:"2–3g EPA/DHA with Meal 3"},
+    ]
+  },
+  {
+    category:"Pantry & Seasoning",color:"#64748b",
+    items:[
+      {name:"Soy sauce or coconut aminos",qty:"1 bottle",note:"Primary beef seasoning"},
+      {name:"Garlic powder",qty:"As needed",note:"Beef and vegetable seasoning"},
+      {name:"Onion powder",qty:"As needed",note:"Beef seasoning"},
+      {name:"Smoked paprika",qty:"As needed",note:"Optional depth for the beef"},
+      {name:"Hot sauce (Cholula, Frank's)",qty:"1 bottle",note:"Calorie-free flavor — add to any meal"},
+    ]
+  },
+];
+
+const SUPPS=[
+  {name:"Maximus Building Blocks",dose:"3 capsules/day",timing:"With Meal 1 — Breakfast (fat aids absorption)",color:"#f97316",status:"✅ Keep",
+   note:"Covers D3 (10,000 IU), K2 (200mcg), all B vitamins in bioavailable forms, zinc, and Geranylgeraniol. Pharmaceutical grade — do not stack separate D3 or zinc on top."},
+  {name:"Creatine Monohydrate",dose:"5g/day",timing:"Post-workout with Meal 3 — 4:30 PM",color:"#3b82f6",status:"✅ Keep",
+   note:"Strongest evidence of any supplement for muscle gain. Timing matters less than daily consistency — post-workout is slightly optimal."},
+  {name:"Fish Oil (Omega-3)",dose:"2–3g EPA/DHA",timing:"With Meal 3 — take with food for absorption",color:"#8b5cf6",status:"✅ Keep",
+   note:"Reduces inflammation, supports cardiovascular health (important with elevated T and tadalafil), and may improve muscle protein synthesis."},
+  {name:"Magnesium Glycinate",dose:"300–400mg",timing:"9:30 PM — 1 hour before sleep",color:"#14b8a6",status:"🆕 Add",
+   note:"NOT in Building Blocks at therapeutic dose. Deepens sleep stages 3–4 where muscle repair happens. Glycinate form is gentler on sensitive stomachs than citrate or oxide."},
+  {name:"Digestive Enzymes",dose:"2 capsules",timing:"Before Meal 2 and before Meal 3",color:"#eab308",status:"🆕 Add",
+   note:"Directly addresses your bloating and digestive sensitivity. Critical as you increase calorie intake. Look for broad-spectrum with amylase, protease and lipase. NOW Super Enzymes is a solid affordable option."},
+  {name:"Enclomiphene + Tadalafil",dose:"As prescribed",timing:"As directed by Maximus doctor",color:"#ec4899",status:"✅ Rx only",
+   note:"Dose changes must go through your Maximus doctor via Elation Passport. Your current 1141/244 T response is excellent. Always disclose new supplements to your doctor."},
+  {name:"Vitamin D3 / K2 (separate)",dose:"N/A",timing:"N/A",color:"#475569",status:"❌ Remove",
+   note:"Building Blocks already contains 10,000 IU D3 and 200mcg K2. Adding more risks overdose — especially vitamin A which is already near the upper tolerable limit."},
+];
+
+const SCHEDULE=[
+  {time:"6:30 AM",label:"Wake Up",icon:"☀️",color:"#eab308",note:"Let cortisol peak naturally — avoid screens immediately"},
+  {time:"7:00–7:30 AM",label:"Meal 1 — Breakfast + Building Blocks",icon:"🍳",color:"#f97316",note:"6 eggs, protein bagel, ham, cheese, kimchi. Take 3 Building Blocks capsules here — fat from eggs aids absorption."},
+  {time:"12:30–1:00 PM",label:"Meal 2 — Pre-Workout + Enzyme",icon:"🍚",color:"#3b82f6",note:"1 scoop beef + ⅔ cup rice + 1 cup veg. Take digestive enzyme before eating. Biggest carb meal of the day."},
+  {time:"2:00 PM",label:"Pre-Workout Shake",icon:"🥤",color:"#8b5cf6",note:"2 scoops whey + water. 30 min before training. Tops off amino acids."},
+  {time:"2:30–3:30 PM",label:"Training",icon:"🏋️",color:"#ef4444",note:"60–75 min max. 2–3 sets to failure. Log everything in the Tracker tab."},
+  {time:"4:30–5:30 PM",label:"Meal 3 — Post-Workout Dinner + Creatine + Enzyme + Fish Oil",icon:"⚡",color:"#ec4899",note:"2 scoops beef + 1 cup rice worth + 2 cups veg. Take 5g creatine, 2 digestive enzymes, fish oil. If bloated, split: half at 4:30, rest at 6:30."},
+  {time:"9:30 PM",label:"Magnesium + Wind Down",icon:"📵",color:"#64748b",note:"300–400mg magnesium glycinate. No screens — protect melatonin for deep sleep."},
+  {time:"10:30 PM",label:"Sleep",icon:"😴",color:"#1e40af",note:"8 hours. Stages 3–4 deep sleep = where muscle repair driven by your elevated T levels happens."},
+];
+
+const TAG_BG={push:"#f97316",pull:"#3b82f6",legs:"#8b5cf6",shoulders:"#14b8a6",extra:"#ec4899",rest:"#1e293b"};
+const TAG_TC={push:"#fff",pull:"#fff",legs:"#fff",shoulders:"#fff",extra:"#fff",rest:"#475569"};
+const todayStr=()=>new Date().toISOString().slice(0,10);
+const fmtDate=(s)=>{const d=new Date(s+"T00:00:00");return d.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});};
+
+// ── FIREBASE HELPERS (compat SDK) ─────────────────────────────────────────────
+
+// Wait for window.db to be available (Firebase loads async relative to Babel)
+const waitForDb = () => new Promise((resolve) => {
+  if (window.dbReady && window.db) { resolve(window.db); return; }
+  window.addEventListener('dbReady', () => resolve(window.db), { once: true });
+});
+
+const fbSave = async (key, data) => {
+  try {
+    const db = await waitForDb();
+    await db.collection("sessions").doc(key).set(data);
+    return true;
+  } catch(e){ console.error("Firebase save error:", e); return false; }
+};
+
+const fbLoadAll = async () => {
+  try {
+    const db = await waitForDb();
+    const snap = await db.collection("sessions").get();
+    const result = {};
+    snap.forEach(doc => { result[doc.id] = doc.data(); });
+    return result;
+  } catch(e){ console.error("Firebase load error:", e); return {}; }
+};
+
+const fbDelete = async (key) => {
+  try {
+    const db = await waitForDb();
+    await db.collection("sessions").doc(key).delete();
+  } catch(e){ console.error("Firebase delete error:", e); }
+};
+
+// ── GROCERY LIST ──────────────────────────────────────────────────────────────
+
+function GroceryList(){
+  const [checked, setChecked] = useState({});
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(()=>{
+    fbLoadAll().then(s=>{
+      if(s["grocery_checklist"]) setChecked(s["grocery_checklist"].items||{});
+      setLoaded(true);
+    });
+  },[]);
+
+  const toggle = async(id) => {
+    const updated = {...checked, [id]:!checked[id]};
+    setChecked(updated);
+    await fbSave("grocery_checklist", {items:updated, updatedAt:new Date().toISOString()});
+  };
+
+  const clearAll = async() => {
+    setChecked({});
+    await fbSave("grocery_checklist", {items:{}, updatedAt:new Date().toISOString()});
+  };
+
+  const totalItems = GROCERY.reduce((a,c)=>a+c.items.length,0);
+  const checkedCount = Object.values(checked).filter(Boolean).length;
+
+  if(!loaded) return <div style={{textAlign:"center",padding:"40px",color:"#475569"}}>Loading grocery list...</div>;
+
+  return(
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:8}}>
+        <div>
+          <div style={{fontSize:11,color:"#475569",letterSpacing:2,textTransform:"uppercase",fontWeight:600}}>Weekly Grocery List</div>
+          <div style={{fontSize:11,color:"#22c55e",marginTop:3}}>☁️ Synced — check off as you shop on any device</div>
+        </div>
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <div style={{fontSize:12,color:"#94a3b8"}}>{checkedCount}/{totalItems}</div>
+          <button className="btn" onClick={clearAll} style={{background:"rgba(239,68,68,.08)",border:"1px solid rgba(239,68,68,.2)",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:600,color:"#f87171"}}>Reset</button>
+        </div>
+      </div>
+      <div style={{background:"rgba(255,255,255,.06)",borderRadius:6,height:6,marginBottom:18,overflow:"hidden"}}>
+        <div style={{width:`${(checkedCount/totalItems)*100}%`,background:"#22c55e",height:"100%",borderRadius:6,transition:"width .3s ease"}}/>
+      </div>
+      {GROCERY.map(cat=>(
+        <div key={cat.category} style={{marginBottom:18}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+            <div style={{width:10,height:10,borderRadius:"50%",background:cat.color,flexShrink:0}}/>
+            <div style={{fontSize:12,fontWeight:700,color:cat.color,letterSpacing:1,textTransform:"uppercase"}}>{cat.category}</div>
+          </div>
+          {cat.items.map((item,i)=>{
+            const id=`${cat.category}_${i}`;
+            const isChecked=!!checked[id];
+            return(
+              <div key={id} className={`check-item${isChecked?" checked":""}`} onClick={()=>toggle(id)}>
+                <div className={`check-box${isChecked?" checked":""}`}>
+                  {isChecked&&<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                </div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:13,fontWeight:600,color:isChecked?"#475569":"#f1f5f9",textDecoration:isChecked?"line-through":"none",transition:"all .15s"}}>{item.name}</div>
+                  <div style={{fontSize:11,color:"#475569",marginTop:2}}>{item.qty} — {item.note}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ))}
+      <div style={{padding:"11px 15px",background:"rgba(249,115,22,.08)",border:"1px solid rgba(249,115,22,.2)",borderRadius:12,fontSize:12,color:"#fdba74",lineHeight:1.7}}>
+        <strong>🛒 Tip:</strong> Open this on your phone in the grocery store — checks sync instantly. Reset button clears all checks for your next shop.
+      </div>
+    </div>
+  );
+}
+
+// ── TRACKER ───────────────────────────────────────────────────────────────────
+
+function Tracker(){
+  const [activeDayIdx, setActiveDayIdx] = useState(0);
+  const [sessions, setSessions] = useState({});
+  const [date, setDate] = useState(todayStr());
+  const [bodyweight, setBodyweight] = useState("");
+  const [notes, setNotes] = useState("");
+  const [weekType, setWeekType] = useState("max");
+  const [saveStatus, setSaveStatus] = useState("idle");
+  const [loading, setLoading] = useState(true);
+  const [viewHistory, setViewHistory] = useState(false);
+  const [historyDay, setHistoryDay] = useState("d1");
+  const [historyFilter, setHistoryFilter] = useState("all");
+  const [setData, setSetData] = useState({});
+  const debounceRef = useRef(null);
+  const day = DAYS[activeDayIdx];
+  const sessionKey = date + "_" + day.id + "_" + weekType;
+
+  useEffect(()=>{
+    fbLoadAll().then(s=>{
+      setSessions(s);
+      setLoading(false);
+    });
+  },[]);
+
+  useEffect(()=>{
+    const s = sessions[sessionKey];
+    setBodyweight(s?.bodyweight||"");
+    setNotes(s?.notes||"");
+    setSetData(s?.exercises||{});
+  },[sessionKey, sessions]);
+
+  const buildDoc = (overrides={}) => ({
+    date, dayId:day.id, dayName:day.name,
+    weekType, bodyweight, notes, exercises:setData,
+    updatedAt:new Date().toISOString(), ...overrides
+  });
+
+  const handleSave = async() => {
+    setSaveStatus("saving");
+    const d = buildDoc();
+    const ok = await fbSave(sessionKey, d);
+    if(ok){
+      setSessions(p=>({...p,[sessionKey]:d}));
+      setSaveStatus("saved");
+      setTimeout(()=>setSaveStatus("idle"),2500);
+    } else {
+      setSaveStatus("error");
+      setTimeout(()=>setSaveStatus("idle"),2500);
+    }
+  };
+
+  const updateSet = (exId, si, field, value) => {
+    setSetData(prev=>{
+      const updated = {
+        ...prev,
+        [exId]:{...prev[exId],[si]:{...prev[exId]?.[si],[field]:value}}
+      };
+      if(debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(async()=>{
+        const d = buildDoc({exercises:updated});
+        await fbSave(sessionKey, d);
+        setSessions(p=>({...p,[sessionKey]:d}));
+      }, 1500);
+      return updated;
+    });
+  };
+
+  const getLastSession = (dayId) =>
+    Object.keys(sessions).filter(k=>k.endsWith("_"+dayId)&&k!==sessionKey)
+      .sort().reverse().map(k=>sessions[k])[0]||null;
+
+  const lastSession = getLastSession(day.id);
+  const getLastSet = (exId,si) => lastSession?.exercises?.[exId]?.[si]||null;
+  const getCurSet = (exId,si) => setData?.[exId]?.[si]||{weight:"",reps:""};
+
+  const handleDeleteAll = async() => {
+    if(!window.confirm("Delete ALL session data? Cannot be undone.")) return;
+    const keys = Object.keys(sessions).filter(k=>k!=="grocery_checklist");
+    for(const k of keys) await fbDelete(k);
+    setSessions(p=>{const n={...p};keys.forEach(k=>delete n[k]);return n;});
+  };
+
+  if(loading) return(
+    <div style={{textAlign:"center",padding:"60px 20px"}}>
+      <div className="spinner" style={{width:32,height:32,margin:"0 auto 14px"}}/>
+      <div style={{color:"#475569",fontSize:13}}>Loading your sessions from Firebase...</div>
+    </div>
+  );
+
+  // History view
+  if(viewHistory){
+    const hDay = DAYS.find(d=>d.id===historyDay);
+    const hist = Object.keys(sessions)
+      .filter(k=>{
+        if(!k.includes("_"+historyDay+"_")) return false;
+        if(historyFilter==="all") return true;
+        return k.endsWith("_"+historyFilter);
+      })
+      .sort().reverse().map(k=>sessions[k]);
+    return(
+      <div>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
+          <button className="btn" onClick={()=>setViewHistory(false)} style={{background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.12)",borderRadius:8,padding:"7px 14px",fontSize:13,fontWeight:600,color:"#e2e8f0"}}>← Back</button>
+          <div style={{fontSize:14,fontWeight:700,color:"#f1f5f9"}}>Session History</div>
+          <div style={{marginLeft:"auto",fontSize:11,color:"#22c55e"}}>☁️ Synced</div>
+        </div>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
+          {DAYS.map(d=>(
+            <button key={d.id} className="btn day-btn" onClick={()=>setHistoryDay(d.id)} style={{background:historyDay===d.id?d.color:"rgba(255,255,255,.04)",border:`1px solid ${historyDay===d.id?d.color:"rgba(255,255,255,.08)"}`,borderRadius:8,padding:"6px 12px",fontSize:11,fontWeight:700,color:historyDay===d.id?"#fff":"#94a3b8"}}>{d.label}</button>
+          ))}
+        </div>
+        <div style={{display:"flex",gap:6,marginBottom:14}}>
+          {[["all","All Sessions","#475569"],["max","💪 Max Effort","#f97316"],["volume","📈 Volume","#3b82f6"]].map(([val,label,col])=>(
+            <button key={val} className="btn" onClick={()=>setHistoryFilter(val)} style={{padding:"5px 12px",borderRadius:8,border:`1px solid ${historyFilter===val?col:"rgba(255,255,255,.08)"}`,background:historyFilter===val?col+"22":"rgba(255,255,255,.03)",fontSize:11,fontWeight:600,color:historyFilter===val?col:"#475569"}}>{label}</button>
+          ))}
+        </div>
+        {hist.length===0?(
+          <div style={{textAlign:"center",padding:"40px",color:"#475569",fontSize:13}}>No sessions logged for {hDay?.name} yet.</div>
+        ):hist.map((s,i)=>(
+          <div key={i} style={{background:"rgba(255,255,255,.03)",border:`1px solid ${hDay?.color}33`,borderRadius:14,padding:"14px",marginBottom:10}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:6}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <div style={{fontSize:13,fontWeight:700,color:hDay?.color}}>{fmtDate(s.date)}</div>
+                <div style={{fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:4,background:s.weekType==="max"?"rgba(249,115,22,.2)":"rgba(59,130,246,.2)",color:s.weekType==="max"?"#f97316":"#3b82f6"}}>
+                  {s.weekType==="max"?"💪 MAX EFFORT":"📈 VOLUME"}
+                </div>
+              </div>
+              {s.bodyweight&&<div style={{fontSize:12,color:"#94a3b8"}}>⚖️ {s.bodyweight} lbs</div>}
+            </div>
+            {hDay?.exercises.map(ex=>{
+              const sets=s.exercises?.[ex.id];
+              if(!sets) return null;
+              const entries=Object.entries(sets).filter(([,sv])=>sv.weight||sv.reps);
+              if(!entries.length) return null;
+              return(
+                <div key={ex.id} style={{marginBottom:8}}>
+                  <div style={{fontSize:11,fontWeight:600,color:"#94a3b8",marginBottom:4}}>{ex.name}</div>
+                  <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                    {entries.map(([si,sv])=>(
+                      <div key={si} style={{background:"rgba(255,255,255,.05)",borderRadius:6,padding:"3px 9px",fontSize:12,color:"#e2e8f0"}}>
+                        S{parseInt(si)+1}: {sv.weight?sv.weight+"lbs":""}{sv.weight&&sv.reps?" × ":""}{sv.reps?sv.reps+" reps":""}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+            {s.notes&&<div style={{marginTop:8,padding:"9px 12px",background:"rgba(255,255,255,.04)",borderRadius:8,fontSize:12,color:"#94a3b8",borderLeft:"2px solid #f97316"}}>📝 {s.notes}</div>}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  const saveBg = saveStatus==="saved"?"#22c55e":saveStatus==="error"?"#ef4444":saveStatus==="saving"?"#64748b":day.color;
+  const saveTxt = saveStatus==="saved"?"✓ Synced to all devices!":saveStatus==="error"?"Error — try again":saveStatus==="saving"?"Syncing...":"Save & Sync Session";
+
+  return(
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:8}}>
+        <div>
+          <div style={{fontSize:11,color:"#475569",letterSpacing:2,textTransform:"uppercase",fontWeight:600}}>Progressive Overload Tracker</div>
+          <div style={{fontSize:11,color:"#22c55e",marginTop:3}}>☁️ Firebase — live sync across all your devices</div>
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <button className="btn" onClick={()=>setViewHistory(true)} style={{background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"7px 12px",fontSize:12,fontWeight:600,color:"#94a3b8"}}>📊 History</button>
+          <button className="btn" onClick={handleDeleteAll} style={{background:"rgba(239,68,68,.08)",border:"1px solid rgba(239,68,68,.2)",borderRadius:8,padding:"7px 12px",fontSize:12,fontWeight:600,color:"#f87171"}}>🗑️ Clear</button>
+        </div>
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+        <div>
+          <div style={{fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:1,marginBottom:5,fontWeight:600}}>Session Date</div>
+          <input type="date" value={date} onChange={e=>setDate(e.target.value)} style={{width:"100%",background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.1)",borderRadius:10,padding:"9px 12px",color:"#e2e8f0",fontSize:13}}/>
+        </div>
+        <div>
+          <div style={{fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:1,marginBottom:5,fontWeight:600}}>Bodyweight (lbs)</div>
+          <input type="number" placeholder="e.g. 198" value={bodyweight} onChange={e=>setBodyweight(e.target.value)} style={{width:"100%",background:"rgba(255,255,255,.05)",border:"1px solid rgba(255,255,255,.1)",borderRadius:10,padding:"9px 12px",color:"#e2e8f0",fontSize:13}}/>
+        </div>
+      </div>
+
+      {/* Week Type Selector */}
+      <div style={{marginBottom:14}}>
+        <div style={{fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:1,marginBottom:8,fontWeight:600}}>Week Type</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+          <button className="btn" onClick={()=>setWeekType("max")} style={{padding:"12px",borderRadius:12,border:`2px solid ${weekType==="max"?"#f97316":"rgba(255,255,255,.08)"}`,background:weekType==="max"?"rgba(249,115,22,.12)":"rgba(255,255,255,.03)",transition:"all .15s ease"}}>
+            <div style={{fontSize:14,fontWeight:700,color:weekType==="max"?"#f97316":"#475569",marginBottom:3}}>💪 Max Effort</div>
+            <div style={{fontSize:11,color:weekType==="max"?"#fdba74":"#475569",lineHeight:1.4}}>2–3 sets to failure · 4–8 reps · Heavy load · 2–3 min rest</div>
+          </button>
+          <button className="btn" onClick={()=>setWeekType("volume")} style={{padding:"12px",borderRadius:12,border:`2px solid ${weekType==="volume"?"#3b82f6":"rgba(255,255,255,.08)"}`,background:weekType==="volume"?"rgba(59,130,246,.12)":"rgba(255,255,255,.03)",transition:"all .15s ease"}}>
+            <div style={{fontSize:14,fontWeight:700,color:weekType==="volume"?"#3b82f6":"#475569",marginBottom:3}}>📈 Volume</div>
+            <div style={{fontSize:11,color:weekType==="volume"?"#93c5fd":"#475569",lineHeight:1.4}}>3–4 sets · 10–15 reps · RIR 1–2 · 60–90 sec rest</div>
+          </button>
+        </div>
+        <div style={{marginTop:8,padding:"8px 12px",background:weekType==="max"?"rgba(249,115,22,.08)":"rgba(59,130,246,.08)",borderRadius:10,fontSize:11,color:weekType==="max"?"#fdba74":"#93c5fd",lineHeight:1.5}}>
+          {weekType==="max" ? "⚡ Max Effort week — grind every set to absolute failure. Beat your last Max Effort session numbers." : "🔁 Volume week — stop 1–2 reps short of failure. Beat your last Volume session numbers. The pump does the work."}
+        </div>
+      </div>
+
+      <div style={{display:"flex",gap:7,flexWrap:"wrap",marginBottom:16}}>
+        {DAYS.map((d,i)=>(
+          <button key={d.id} className="btn day-btn" onClick={()=>setActiveDayIdx(i)} style={{background:activeDayIdx===i?d.color:"rgba(255,255,255,.04)",border:`1px solid ${activeDayIdx===i?d.color:"rgba(255,255,255,.08)"}`,borderRadius:10,padding:"7px 13px",fontSize:12,fontWeight:700,color:activeDayIdx===i?"#fff":"#94a3b8"}}>
+            {d.label}<br/><span style={{fontSize:10,opacity:.8}}>{d.name.split(" ")[0]}</span>
+          </button>
+        ))}
+      </div>
+
+      <div style={{padding:"11px 15px",background:`linear-gradient(135deg,${day.color}22,transparent)`,border:`1px solid ${day.color}44`,borderRadius:12,marginBottom:14,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:2,color:day.color}}>{day.name}</div>
+        <div style={{fontSize:10,fontWeight:700,letterSpacing:2,padding:"2px 7px",borderRadius:4,background:day.color+"33",color:day.color}}>{day.tag}</div>
+        <div style={{fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:4,background:weekType==="max"?"rgba(249,115,22,.2)":"rgba(59,130,246,.2)",color:weekType==="max"?"#f97316":"#3b82f6"}}>
+          {weekType==="max"?"💪 MAX EFFORT":"📈 VOLUME"}
+        </div>
+        {lastSession&&<div style={{marginLeft:"auto",fontSize:11,color:"#475569"}}>Last {weekType==="max"?"ME":"Vol"}: {fmtDate(lastSession.date)}{lastSession.bodyweight?" · "+lastSession.bodyweight+"lbs":""}</div>}
+      </div>
+
+      {day.exercises.map(ex=>{
+        const rows = Array.from({length:ex.sets},(_,i)=>i);
+        return(
+          <div key={ex.id} style={{background:"rgba(255,255,255,.02)",border:"1px solid rgba(255,255,255,.06)",borderRadius:12,marginBottom:9,overflow:"hidden"}}>
+            <div style={{padding:"9px 14px",background:"rgba(255,255,255,.03)",borderBottom:"1px solid rgba(255,255,255,.05)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div>
+                <div style={{fontSize:13,fontWeight:700,color:"#f1f5f9"}}>{ex.name}</div>
+                <div style={{fontSize:10,color:"#64748b",marginTop:1}}>{ex.target} · {ex.notes}</div>
+              </div>
+              <div style={{fontSize:11,color:day.color,fontWeight:700,flexShrink:0,marginLeft:8}}>{ex.sets} sets</div>
+            </div>
+            <div style={{padding:"8px 14px"}}>
+              <div style={{display:"grid",gridTemplateColumns:".4fr 1fr 1fr 1fr",gap:6,marginBottom:5}}>
+                {["Set","Weight (lbs)","Reps","Last Time"].map((h,i)=>(
+                  <div key={i} style={{fontSize:9,color:i===3?"#3b82f6":"#475569",textTransform:"uppercase",letterSpacing:1}}>{h}</div>
+                ))}
+              </div>
+              {rows.map(si=>{
+                const cur = getCurSet(ex.id,si);
+                const last = getLastSet(ex.id,si);
+                const improved = last&&cur.weight&&parseFloat(cur.weight)>parseFloat(last.weight||0);
+                return(
+                  <div key={si} style={{display:"grid",gridTemplateColumns:".4fr 1fr 1fr 1fr",gap:6,marginBottom:6,alignItems:"center"}}>
+                    <div style={{fontSize:13,fontWeight:700,color:day.color}}>S{si+1}</div>
+                    <input type="number" placeholder="0" value={cur.weight||""} onChange={e=>updateSet(ex.id,si,"weight",e.target.value)}
+                      style={{background:"rgba(255,255,255,.06)",border:`1px solid ${improved?"#22c55e":"rgba(255,255,255,.1)"}`,borderRadius:8,padding:"8px 10px",color:"#e2e8f0",fontSize:13,width:"100%"}}/>
+                    <input type="number" placeholder="0" value={cur.reps||""} onChange={e=>updateSet(ex.id,si,"reps",e.target.value)}
+                      style={{background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.1)",borderRadius:8,padding:"8px 10px",color:"#e2e8f0",fontSize:13,width:"100%"}}/>
+                    <div style={{fontSize:11,fontStyle:"italic"}}>
+                      {last
+                        ?<span style={{color:improved?"#22c55e":"#475569"}}>{improved?"↑ ":""}{last.weight||"—"}{last.weight?"lb":""}{last.reps?` × ${last.reps}`:""}</span>
+                        :<span style={{color:"#2d3748"}}>No data</span>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+
+      <div style={{marginBottom:12}}>
+        <div style={{fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:1,marginBottom:6,fontWeight:600}}>Session Notes</div>
+        <textarea placeholder="PRs hit? Energy levels? Sleep last night? Anything that felt off? Notes for next session..." value={notes} onChange={e=>setNotes(e.target.value)} rows={4}
+          style={{width:"100%",background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.1)",borderRadius:12,padding:"11px 14px",color:"#e2e8f0",fontSize:13,resize:"vertical",lineHeight:1.6}}/>
+      </div>
+
+      <button className="btn" onClick={handleSave} disabled={saveStatus==="saving"}
+        style={{width:"100%",padding:"13px",background:saveBg,borderRadius:12,fontSize:14,fontWeight:700,color:"#fff",letterSpacing:.5,transition:"all .2s ease",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+        {saveStatus==="saving"&&<div className="spinner"/>}{saveTxt}
+      </button>
+      <div style={{marginTop:10,fontSize:11,color:"#475569",textAlign:"center"}}>Auto-saves as you type. Hit Save to confirm. Open on any device to see your data.</div>
+    </div>
+  );
+}
+
+// ── MACRO BAR ─────────────────────────────────────────────────────────────────
+
+function MacroBar(){
+  const KCAL=3200, P=185, C=350, F=110;
+  const pct={p:Math.round((P*4/KCAL)*100),c:Math.round((C*4/KCAL)*100),f:Math.round((F*9/KCAL)*100)};
+  return(
+    <div style={{background:"#111118",borderBottom:"1px solid rgba(255,255,255,.05)",padding:"16px 20px"}}>
+      <div style={{maxWidth:800,margin:"0 auto"}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:10}}>
+          {[{l:"Calories",v:"3,200",u:"kcal",c:"#f97316"},{l:"Protein",v:P+"g",u:"~0.93g/lb",c:"#3b82f6"},{l:"Carbs",v:C+"g",u:pct.c+"%",c:"#8b5cf6"},{l:"Fat",v:F+"g",u:pct.f+"%",c:"#eab308"}].map(m=>(
+            <div key={m.l} style={{background:"rgba(255,255,255,.03)",border:`1px solid ${m.c}33`,borderRadius:12,padding:"10px 8px",textAlign:"center"}}>
+              <div style={{fontSize:17,fontWeight:700,color:m.c,fontFamily:"'Bebas Neue',sans-serif"}}>{m.v}</div>
+              <div style={{fontSize:9,color:"#64748b",textTransform:"uppercase",letterSpacing:1}}>{m.l}</div>
+              <div style={{fontSize:10,color:"#475569",marginTop:1}}>{m.u}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{marginTop:10,borderRadius:6,overflow:"hidden",display:"flex",height:5}}>
+          <div style={{width:pct.p+"%",background:"#3b82f6"}}/><div style={{width:pct.c+"%",background:"#8b5cf6"}}/><div style={{width:pct.f+"%",background:"#eab308"}}/>
+        </div>
+        <div style={{marginTop:8,fontSize:11,color:"#475569",textAlign:"center"}}>
+          ⚠️ Currently at ~2,100 kcal — ramp up by 250 kcal/week over 5 weeks to protect digestion
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── MAIN APP ──────────────────────────────────────────────────────────────────
+
+function App(){
+  const [tab,setTab] = useState("training");
+  const [activeDay,setActiveDay] = useState(0);
+  const d = DAYS[activeDay];
+  const tabs=[["training","🏋️ Plan"],["tracker","📊 Tracker"],["diet","🍽️ Diet"],["grocery","🛒 Grocery"],["schedule","🗓️ Schedule"],["supplements","💊 Supps"]];
+
+  return(
+    <div style={{background:"#0a0a0f",minHeight:"100vh",color:"#e2e8f0",paddingBottom:60}}>
+
+      {/* Header */}
+      <div style={{background:"linear-gradient(135deg,#0f0f1a,#1a1025)",borderBottom:"1px solid rgba(255,255,255,.06)",padding:"22px 20px 18px"}}>
+        <div style={{maxWidth:800,margin:"0 auto"}}>
+          <div style={{fontSize:10,letterSpacing:4,color:"#f97316",fontWeight:600,marginBottom:5,textTransform:"uppercase"}}>Final Optimized Plan — v8 · Firebase Sync Fixed</div>
+          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:30,lineHeight:1,letterSpacing:2,marginBottom:12,background:"linear-gradient(90deg,#fff,#94a3b8)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>
+            5-DAY CUSTOM SPLIT + TRACKER + GROCERY
+          </div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+            {[["⚡","27 yrs"],["📏","6'1\" / 198 lbs"],["🧬","T: 1141 / Free: 244"],["💊","Enclomiphene"],["🎯","Clean Bulk"],["📅","5-Day Split"],["🍽️","3,200 kcal"],["☁️","Firebase Synced"]].map(([icon,label])=>(
+              <div key={label} style={{background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.1)",borderRadius:20,padding:"4px 10px",fontSize:11,fontWeight:500,color:"#cbd5e1"}}>{icon} {label}</div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <MacroBar/>
+
+      {/* Tabs */}
+      <div className="scroll-x" style={{background:"#0d0d14",borderBottom:"1px solid rgba(255,255,255,.05)",position:"sticky",top:0,zIndex:10}}>
+        <div style={{maxWidth:800,margin:"0 auto",display:"flex",minWidth:"max-content",padding:"0 20px"}}>
+          {tabs.map(([t,label])=>(
+            <button key={t} className="btn tab-btn" onClick={()=>setTab(t)} style={{padding:"13px 14px",fontSize:13,fontWeight:600,whiteSpace:"nowrap",color:tab===t?"#fff":"#475569",borderBottom:tab===t?"2px solid #f97316":"2px solid transparent"}}>{label}</button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{maxWidth:800,margin:"0 auto",padding:"20px 20px 0"}} className="fi">
+
+        {/* PLAN */}
+        {tab==="training"&&(
+          <div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:5,marginBottom:18}}>
+              {WEEKLY.map((s,i)=>(
+                <div key={i} style={{background:TAG_BG[s.type],borderRadius:8,padding:"7px 3px",textAlign:"center"}}>
+                  <div style={{fontSize:9,fontWeight:700,color:TAG_TC[s.type],letterSpacing:1,textTransform:"uppercase",opacity:.75}}>{s.day}</div>
+                  <div style={{fontSize:9,fontWeight:700,color:TAG_TC[s.type],marginTop:3,lineHeight:1.3}}>{s.session}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{display:"flex",gap:7,flexWrap:"wrap",marginBottom:18}}>
+              {DAYS.map((day,i)=>(
+                <button key={i} className="btn day-btn" onClick={()=>setActiveDay(i)} style={{background:activeDay===i?day.color:"rgba(255,255,255,.04)",border:`1px solid ${activeDay===i?day.color:"rgba(255,255,255,.08)"}`,borderRadius:10,padding:"7px 13px",fontSize:12,fontWeight:700,color:activeDay===i?"#fff":"#94a3b8"}}>
+                  {day.label}<br/><span style={{fontSize:10,opacity:.8}}>{day.name.split(" ")[0]}</span>
+                </button>
+              ))}
+            </div>
+            <div style={{background:"rgba(255,255,255,.03)",border:`1px solid ${d.color}44`,borderRadius:16,overflow:"hidden"}}>
+              <div style={{padding:"14px 18px",background:`linear-gradient(135deg,${d.color}22,transparent)`,borderBottom:`1px solid ${d.color}33`}}>
+                <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:4}}>
+                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:24,letterSpacing:2,color:d.color}}>{d.name}</div>
+                  <div style={{fontSize:10,fontWeight:700,letterSpacing:2,padding:"2px 7px",borderRadius:4,background:d.color+"33",color:d.color}}>{d.tag}</div>
+                  <div style={{fontSize:11,color:"#475569",marginLeft:"auto"}}>📅 {d.day}</div>
+                </div>
+                <div style={{fontSize:12,color:"#94a3b8",lineHeight:1.6}}>{d.note}</div>
+              </div>
+              <div className="scroll-x">
+                <div style={{minWidth:480}}>
+                  <div style={{display:"grid",gridTemplateColumns:"2.2fr .5fr .9fr 1.6fr",padding:"9px 18px",borderBottom:"1px solid rgba(255,255,255,.05)",fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:1.5,fontWeight:600}}>
+                    <div>Exercise</div><div>Sets</div><div>Target</div><div>Notes</div>
+                  </div>
+                  {d.exercises.map((ex,i)=>(
+                    <div key={ex.id} className="ex-row" style={{display:"grid",gridTemplateColumns:"2.2fr .5fr .9fr 1.6fr",padding:"11px 18px",borderBottom:i<d.exercises.length-1?"1px solid rgba(255,255,255,.04)":"none",alignItems:"center"}}>
+                      <div style={{fontSize:13,fontWeight:600,color:"#e2e8f0"}}><span style={{display:"inline-block",width:20,fontSize:11,color:d.color,fontWeight:700}}>{i+1}.</span>{ex.name}</div>
+                      <div style={{fontSize:13,fontWeight:700,color:d.color}}>{ex.sets}</div>
+                      <div style={{fontSize:11,color:"#94a3b8"}}>{ex.target}</div>
+                      <div style={{fontSize:11,color:"#64748b",fontStyle:"italic"}}>{ex.notes}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div style={{marginTop:10,padding:"11px 15px",background:"rgba(249,115,22,.08)",border:"1px solid rgba(249,115,22,.2)",borderRadius:12,fontSize:12,color:"#fdba74",lineHeight:1.7}}>
+              <strong>🧬 T-Level Note:</strong> Total T 1,141 / Free T 244 via enclomiphene. Recovery above average — push 2–3 sets to failure on compounds. Log every session in the Tracker and beat last week's numbers.
+            </div>
+            <div style={{marginTop:8,padding:"11px 15px",background:"rgba(139,92,246,.08)",border:"1px solid rgba(139,92,246,.2)",borderRadius:12,fontSize:12,color:"#c4b5fd",lineHeight:1.7}}>
+              <strong>🔄 Bicep Rotation (Day 4):</strong> Week A: Incline Bench Curl + Preacher. Week B: Waiter Curls + Seated Cable Curls. Mentzer Curls every week as primary overload movement.
+            </div>
+            <div style={{marginTop:8,padding:"11px 15px",background:"rgba(249,115,22,.06)",border:"1px solid rgba(249,115,22,.15)",borderRadius:12,fontSize:12,color:"#fdba74",lineHeight:1.7}}>
+              <strong>📅 2-Week Periodisation Cycle:</strong>
+              <div style={{marginTop:6,display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                <div style={{background:"rgba(249,115,22,.1)",borderRadius:8,padding:"8px 10px"}}>
+                  <div style={{fontWeight:700,marginBottom:3}}>💪 Week 1 — Max Effort</div>
+                  <div style={{fontSize:11,color:"#fde68a",lineHeight:1.5}}>2–3 sets to failure · 4–8 reps · Heavy load · 2–3 min rest. Beat your last Max Effort numbers.</div>
+                </div>
+                <div style={{background:"rgba(59,130,246,.1)",borderRadius:8,padding:"8px 10px"}}>
+                  <div style={{fontWeight:700,marginBottom:3,color:"#93c5fd"}}>📈 Week 2 — Volume</div>
+                  <div style={{fontSize:11,color:"#bfdbfe",lineHeight:1.5}}>3–4 sets · 10–15 reps · RIR 1–2 · 60–90 sec rest. Stop short of failure — the pump does the work.</div>
+                </div>
+              </div>
+              <div style={{marginTop:6,fontSize:11,color:"#d97706"}}>Every 10–12 weeks (5–6 full cycles) take one deload week at 50% volume to let joints and tendons recover.</div>
+            </div>
+          </div>
+        )}
+
+        {tab==="tracker"&&<Tracker/>}
+
+        {/* DIET */}
+        {tab==="diet"&&(
+          <div>
+            <div style={{marginBottom:10,fontSize:11,color:"#475569",letterSpacing:2,textTransform:"uppercase",fontWeight:600}}>3 Meals + Pre-Workout Shake — Your Foods, Optimized</div>
+            <div style={{padding:"11px 15px",background:"rgba(239,68,68,.08)",border:"1px solid rgba(239,68,68,.2)",borderRadius:12,fontSize:12,color:"#fca5a5",lineHeight:1.7,marginBottom:14}}>
+              <strong>⚠️ Calorie Ramp-Up:</strong> You're at ~2,100 kcal. Add ~250 kcal/week. Week 1: 2,350 → Week 2: 2,600 → Week 3: 2,850 → Week 4: 3,100 → Week 5: 3,200. Increase rice portions gradually as you ramp up. Sensitive stomachs need time to adapt to higher food volume.
+            </div>
+
+            {/* Batch Cook Guide */}
+            <div style={{background:"rgba(255,255,255,.03)",border:"1px solid rgba(249,115,22,.3)",borderRadius:14,padding:"14px",marginBottom:14}}>
+              <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:2,color:"#f97316",marginBottom:10}}>🍳 BATCH COOK GUIDE — EVERY 4 DAYS</div>
+
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
+                <div style={{background:"rgba(249,115,22,.08)",borderRadius:10,padding:"10px 12px"}}>
+                  <div style={{fontSize:10,color:"#f97316",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:3}}>Beef Per Cook</div>
+                  <div style={{fontSize:12,color:"#e2e8f0",lineHeight:1.6}}>{PREP_GUIDE.perCook}</div>
+                </div>
+                <div style={{background:"rgba(139,92,246,.08)",borderRadius:10,padding:"10px 12px"}}>
+                  <div style={{fontSize:10,color:"#8b5cf6",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:3}}>Rice Per Cook</div>
+                  <div style={{fontSize:12,color:"#e2e8f0",lineHeight:1.6}}>{PREP_GUIDE.ricePerCook}</div>
+                </div>
+              </div>
+
+              {/* Cook rhythm */}
+              <div style={{marginBottom:12}}>
+                <div style={{fontSize:11,color:"#475569",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Cook Rhythm</div>
+                {PREP_GUIDE.rhythm.map((r,i)=>(
+                  <div key={i} style={{background:"rgba(255,255,255,.04)",borderRadius:10,padding:"10px 12px",marginBottom:6,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:6}}>
+                    <div style={{fontSize:12,fontWeight:700,color:"#f97316"}}>{r.cook}</div>
+                    <div style={{fontSize:11,color:"#94a3b8"}}>{r.covers}</div>
+                    <div style={{fontSize:11,color:"#22c55e",fontWeight:600}}>{r.containers}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Portion targets */}
+              <div style={{marginBottom:12}}>
+                <div style={{fontSize:11,color:"#475569",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Portion Targets — No Scale Needed</div>
+                {PREP_GUIDE.portions.map((p,i)=>(
+                  <div key={i} style={{background:"rgba(255,255,255,.03)",borderRadius:10,padding:"10px 12px",marginBottom:6}}>
+                    <div style={{fontSize:12,fontWeight:700,color:"#f1f5f9",marginBottom:6}}>{p.label}</div>
+                    <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                      <div style={{fontSize:11,color:"#f97316",background:"rgba(249,115,22,.1)",borderRadius:6,padding:"3px 8px"}}>🥩 {p.scoops} of beef</div>
+                      <div style={{fontSize:11,color:"#8b5cf6",background:"rgba(139,92,246,.1)",borderRadius:6,padding:"3px 8px"}}>🍚 {p.rice}</div>
+                      <div style={{fontSize:11,color:"#22c55e",background:"rgba(34,197,94,.1)",borderRadius:6,padding:"3px 8px"}}>🥦 {p.veg}</div>
+                      <div style={{fontSize:11,color:"#475569",background:"rgba(255,255,255,.05)",borderRadius:6,padding:"3px 8px"}}>📦 {p.containers}</div>
+                    </div>
+                  </div>
+                ))}
+                <div style={{fontSize:12,color:"#fdba74",padding:"9px 12px",background:"rgba(249,115,22,.08)",borderRadius:10,marginTop:6}}>
+                  💡 <strong>Key ratio:</strong> Meal 3 always gets exactly double the beef and double the rice of Meal 2. Same spoon, just fill it twice.
+                </div>
+              </div>
+
+              {/* Steps */}
+              <div style={{marginBottom:10}}>
+                <div style={{fontSize:11,color:"#475569",fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Step-by-Step (~50 min)</div>
+                {PREP_GUIDE.steps.map((s,i)=>(
+                  <div key={i} style={{display:"flex",gap:10,padding:"9px 0",borderBottom:i<PREP_GUIDE.steps.length-1?"1px solid rgba(255,255,255,.05)":"none",alignItems:"flex-start"}}>
+                    <div style={{minWidth:38,fontSize:10,fontWeight:700,color:"#f97316",paddingTop:1,flexShrink:0}}>{s.time}</div>
+                    <div>
+                      <div style={{fontSize:12,fontWeight:700,color:"#f1f5f9",marginBottom:2}}>{s.task}</div>
+                      <div style={{fontSize:11,color:"#64748b",lineHeight:1.5}}>{s.detail}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                <div style={{padding:"9px 12px",background:"rgba(59,130,246,.08)",borderRadius:10,fontSize:11,color:"#93c5fd",lineHeight:1.6}}>
+                  <strong>🔁 Reheat:</strong> {PREP_GUIDE.reheat}
+                </div>
+                <div style={{padding:"9px 12px",background:"rgba(34,197,94,.08)",borderRadius:10,fontSize:11,color:"#86efac",lineHeight:1.6}}>
+                  <strong>🧊 Fridge life:</strong> {PREP_GUIDE.fridgeLife}
+                </div>
+              </div>
+            </div>
+
+            {/* Meals */}
+            {MEALS.map((meal,i)=>(
+              <div key={i} className="card" style={{background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.07)",borderRadius:14,padding:"14px",marginBottom:10}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:700,color:"#f1f5f9"}}>{meal.label}</div>
+                    <div style={{display:"flex",gap:6,marginTop:4,alignItems:"center",flexWrap:"wrap"}}>
+                      <div style={{fontSize:10,color:"#475569"}}>🕐 {meal.time}</div>
+                      <div style={{fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:4,background:meal.tagColor+"22",color:meal.tagColor}}>{meal.tag}</div>
+                    </div>
+                  </div>
+                  <div style={{textAlign:"right",flexShrink:0,marginLeft:10}}>
+                    <div style={{background:"rgba(249,115,22,.15)",border:"1px solid rgba(249,115,22,.3)",borderRadius:8,padding:"3px 9px",fontSize:12,fontWeight:700,color:"#fb923c",marginBottom:3}}>{meal.kcal} kcal</div>
+                    <div style={{fontSize:10,color:"#475569"}}>P:{meal.macros.p}g C:{meal.macros.c}g F:{meal.macros.f}g</div>
+                  </div>
+                </div>
+                <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:8}}>
+                  {meal.items.map((item,j)=>(
+                    <div key={j} style={{background:"rgba(255,255,255,.05)",borderRadius:6,padding:"3px 9px",fontSize:11,color:"#94a3b8"}}>✓ {item}</div>
+                  ))}
+                </div>
+                <div style={{fontSize:11,color:"#475569",borderTop:"1px solid rgba(255,255,255,.05)",paddingTop:7,lineHeight:1.6}}>
+                  <div style={{color:"#64748b",marginBottom:3,fontStyle:"italic"}}>💡 {meal.note}</div>
+                  {meal.prep&&<div style={{color:"#475569"}}>🍳 <strong>Prep:</strong> {meal.prep}</div>}
+                </div>
+              </div>
+            ))}
+            <div style={{padding:"11px 15px",background:"rgba(59,130,246,.08)",border:"1px solid rgba(59,130,246,.2)",borderRadius:12,fontSize:12,color:"#93c5fd",lineHeight:1.7}}>
+              <strong>💧 Hydration:</strong> 3–4L water daily. Rest days: drop carbs ~80–100g (smaller rice portion), keep protein the same.
+            </div>
+          </div>
+        )}
+
+        {tab==="grocery"&&<GroceryList/>}
+
+        {/* SCHEDULE */}
+        {tab==="schedule"&&(
+          <div>
+            <div style={{marginBottom:12,fontSize:11,color:"#475569",letterSpacing:2,textTransform:"uppercase",fontWeight:600}}>Optimized Daily Rhythm</div>
+            {SCHEDULE.map((item,i)=>(
+              <div key={i} className="sched-row" style={{display:"flex",gap:12,padding:"11px 14px",borderRadius:12,marginBottom:5,background:"rgba(255,255,255,.02)",border:"1px solid rgba(255,255,255,.05)",alignItems:"flex-start"}}>
+                <div style={{minWidth:80,fontSize:10,fontWeight:700,color:item.color,paddingTop:2,flexShrink:0}}>{item.time}</div>
+                <div style={{width:32,height:32,borderRadius:"50%",background:item.color+"22",border:`2px solid ${item.color}55`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,flexShrink:0}}>{item.icon}</div>
+                <div>
+                  <div style={{fontSize:13,fontWeight:700,color:"#f1f5f9",marginBottom:2}}>{item.label}</div>
+                  <div style={{fontSize:11,color:"#64748b",lineHeight:1.5}}>{item.note}</div>
+                </div>
+              </div>
+            ))}
+            <div style={{marginTop:10,padding:"11px 15px",background:"rgba(234,179,8,.08)",border:"1px solid rgba(234,179,8,.2)",borderRadius:12,fontSize:12,color:"#fde68a",lineHeight:1.7}}>
+              <strong>🗓️ Rest Days (Wed + Sun):</strong> Same wake/sleep times. Drop carbs ~80–100g (smaller rice portion). Keep protein identical. Same supplements.
+            </div>
+          </div>
+        )}
+
+        {/* SUPPLEMENTS */}
+        {tab==="supplements"&&(
+          <div>
+            <div style={{marginBottom:10,fontSize:11,color:"#475569",letterSpacing:2,textTransform:"uppercase",fontWeight:600}}>Optimized Stack — Built Around Your Protocol</div>
+            {SUPPS.map((s,i)=>(
+              <div key={i} style={{background:"rgba(255,255,255,.03)",border:`1px solid ${s.color}33`,borderLeft:`3px solid ${s.color}`,borderRadius:"0 12px 12px 0",padding:"13px 15px",marginBottom:8}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+                  <div>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2,flexWrap:"wrap"}}>
+                      <div style={{fontSize:13,fontWeight:700,color:"#f1f5f9"}}>{s.name}</div>
+                      <div style={{fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:4,background:s.color+"22",color:s.color}}>{s.status}</div>
+                    </div>
+                    <div style={{fontSize:11,color:"#64748b"}}>⏰ {s.timing}</div>
+                  </div>
+                  <div style={{fontSize:13,fontWeight:700,color:s.color,whiteSpace:"nowrap",marginLeft:12,flexShrink:0}}>{s.dose}</div>
+                </div>
+                <div style={{fontSize:11,color:"#475569",lineHeight:1.6,borderTop:"1px solid rgba(255,255,255,.05)",paddingTop:6}}>{s.note}</div>
+              </div>
+            ))}
+            <div style={{marginTop:8,padding:"11px 15px",background:"rgba(236,72,153,.08)",border:"1px solid rgba(236,72,153,.2)",borderRadius:12,fontSize:12,color:"#f9a8d4",lineHeight:1.7}}>
+              <strong>🏥 Medical Note:</strong> Any changes to enclomiphene or tadalafil dose must go through your Maximus doctor via Elation Passport. Always disclose new supplements to your doctor — some can interact with your protocol.
+            </div>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
